@@ -17,6 +17,7 @@
 #define LOG_TAG "battery-mitigation"
 
 #include <battery_mitigation/BatteryMitigation.h>
+#include <android/binder_process.h>
 
 using android::hardware::google::pixel::BatteryMitigation;
 using android::hardware::google::pixel::MitigationConfig;
@@ -68,10 +69,13 @@ const char kReadyFilePath[] = "/sys/devices/virtual/pmic/mitigation/instruction/
 const char kReadyProperty[] = "vendor.brownout.mitigation.ready";
 const char kLastMealPath[] = "/data/vendor/mitigation/lastmeal.txt";
 const char kBRRequestedProperty[] = "vendor.brownout_reason";
+const char kLastMealProperty[] = "vendor.brownout.br.feasible";
 const std::regex kTimestampRegex("^\\S+\\s[0-9]+:[0-9]+:[0-9]+\\S+$");
 
 int main(int /*argc*/, char ** /*argv*/) {
     auto batteryMitigationStartTime = std::chrono::system_clock::now();
+    ABinderProcess_setThreadPoolMaxThreadCount(1);
+    ABinderProcess_startThreadPool();
     bmSp = new BatteryMitigation(cfg);
     if (!bmSp) {
         return 0;
@@ -85,6 +89,7 @@ int main(int /*argc*/, char ** /*argv*/) {
         std::ifstream src(cfg.LogFilePath, std::ios::in);
         std::ofstream dst(kLastMealPath, std::ios::out);
         dst << src.rdbuf();
+        android::base::SetProperty(kLastMealProperty, "1");
     }
     bool isBatteryMitigationReady = false;
     std::string ready_str;
